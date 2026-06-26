@@ -100,6 +100,10 @@ def build_leads(citations, providers):
             "scope_severity_code": c["scope_severity_code"],
             "severity_rank": rank,
             "citation_status": c.get("deficiency_corrected", ""),
+            "correction_date": c.get("correction_date", ""),
+            "from_complaint": c.get("complaint_deficiency", ""),
+            "infection_control_related": c.get("infection_control_inspection_deficiency", ""),
+            "deficiency_description": c.get("deficiency_description", ""),
         })
     leads.sort(key=lambda l: (l["severity_rank"], l["survey_date"]), reverse=True)
     return leads
@@ -110,7 +114,8 @@ def save_csv(leads, path):
         "lead_id", "facility_name", "address", "city", "state", "zip_code",
         "phone", "ownership_type", "chain_name", "overall_rating",
         "health_inspection_rating", "survey_date", "scope_severity_code",
-        "severity_rank", "citation_status",
+        "severity_rank", "citation_status", "correction_date",
+        "from_complaint", "infection_control_related", "deficiency_description",
     ]
     with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
