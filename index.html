@@ -56,6 +56,34 @@
     background: #3D2F12; color: #E8B65C; padding: 10px 14px; border-radius: 8px;
     font-size: 13px; margin-bottom: 16px; display: none;
   }
+  a.phone-link, a.maps-link { color: var(--text); text-decoration: none; }
+  a.phone-link:hover, a.maps-link:hover { color: var(--accent); }
+
+  @media (max-width: 700px) {
+    .wrap { padding: 14px; }
+    .controls { flex-direction: column; }
+    .controls input, .controls select { width: 100%; }
+
+    table, thead, tbody, th, td, tr { display: block; }
+    thead { display: none; }
+    tbody tr {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      margin-bottom: 12px; padding: 12px;
+    }
+    tbody tr:hover { background: var(--card); }
+    tbody td {
+      border-bottom: none; padding: 6px 0; display: flex;
+      justify-content: space-between; align-items: center; gap: 10px;
+    }
+    tbody td::before {
+      content: attr(data-label); color: var(--text-sub); font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
+    }
+    tbody td:first-child::before { display: none; }
+    tbody td:first-child { display: block; }
+    tbody td:first-child .facility { font-size: 15px; }
+    button.contact-btn { width: 100%; padding: 10px; font-size: 13px; }
+  }
 </style>
 </head>
 <body>
@@ -177,16 +205,18 @@ function render() {
 
   document.getElementById('rows').innerHTML = rows.map(l => {
     const isContacted = !!(CONTACTED[l.lead_id] && CONTACTED[l.lead_id].contacted);
+    const mapsQuery = encodeURIComponent(`${l.address}, ${l.city}, ${l.state} ${l.zip_code}`);
+    const phoneDigits = (l.phone || '').replace(/\D/g, '');
     return `
       <tr class="${isContacted ? 'contacted' : ''}">
-        <td><div class="facility">${l.facility_name}</div><div class="meta">${l.address}</div></td>
-        <td>${l.city}, ${l.state} ${l.zip_code}</td>
-        <td>${l.phone || '—'}</td>
-        <td><span class="sev sev-${l.severity_rank}">${SEV_LABEL[l.severity_rank] || '—'} (${l.scope_severity_code})</span></td>
-        <td>${l.survey_date}</td>
-        <td>${l.overall_rating ? l.overall_rating + '★' : '—'}</td>
-        <td class="meta">${l.chain_name || '—'}</td>
-        <td><button class="contact-btn ${isContacted ? 'is-contacted' : ''}" data-id="${l.lead_id}">${isContacted ? 'Contacted ✓' : 'Mark contacted'}</button></td>
+        <td><div class="facility">${l.facility_name}</div><a class="maps-link meta" href="https://maps.google.com/?q=${mapsQuery}" target="_blank" rel="noopener">${l.address}</a></td>
+        <td data-label="Location">${l.city}, ${l.state} ${l.zip_code}</td>
+        <td data-label="Phone">${phoneDigits ? `<a class="phone-link" href="tel:${phoneDigits}">${l.phone}</a>` : '—'}</td>
+        <td data-label="Severity"><span class="sev sev-${l.severity_rank}">${SEV_LABEL[l.severity_rank] || '—'} (${l.scope_severity_code})</span></td>
+        <td data-label="Citation date">${l.survey_date}</td>
+        <td data-label="Rating">${l.overall_rating ? l.overall_rating + '★' : '—'}</td>
+        <td data-label="Chain" class="meta">${l.chain_name || '—'}</td>
+        <td data-label="Contacted"><button class="contact-btn ${isContacted ? 'is-contacted' : ''}" data-id="${l.lead_id}">${isContacted ? 'Contacted ✓' : 'Mark contacted'}</button></td>
       </tr>`;
   }).join('');
 
