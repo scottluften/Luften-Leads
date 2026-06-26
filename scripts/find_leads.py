@@ -59,8 +59,14 @@ def fetch_citations():
         rows = fetch_all(DEFICIENCIES_DATASET, [
             ("state", "=", state),
             ("deficiency_tag_number", "=", TARGET_TAG),
+            # Complaint-triggered F584 citations come from a specific resident/family
+            # complaint, not a routine survey finding -- for this F-tag, complaints
+            # skew heavily toward odor/cleanliness issues rather than e.g. privacy or
+            # temperature, which makes this the closest available proxy for "odor
+            # complaint" without per-citation narrative text.
+            ("complaint_deficiency", "=", "Y"),
         ])
-        print(f"  {state}: {len(rows)} citations")
+        print(f"  {state}: {len(rows)} complaint-driven citations")
         citations.extend(rows)
     return citations
 

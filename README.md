@@ -9,9 +9,9 @@ Queries two public CMS datasets (no auth required):
 - **Health Deficiencies** (`r5ix-sfxw`) — individual inspection citations per facility.
 - **Provider Information** (`4pq5-n9py`) — facility contact/rating info (phone, address, ownership, star ratings).
 
-It filters citations to tag **F584** ("safe, clean, comfortable, homelike environment") — the closest structured CMS category to odor/cleanliness complaints — across Luften's current service states, joins in facility contact info, and ranks the result by citation severity (CMS's A–L scope/severity grid) then recency.
+It filters citations to tag **F584** ("safe, clean, comfortable, homelike environment") — the closest structured CMS category to odor/cleanliness complaints — restricted to citations flagged `complaint_deficiency = Y`, i.e. ones that came from an actual resident/family complaint rather than a routine survey finding. Across Luften's current service states, it joins in facility contact info and ranks the result by citation severity (CMS's A–L scope/severity grid) then recency.
 
-**Honest limitation:** CMS's public data does not include free-text inspector narratives, so this isn't a literal "mentions urine odor" search — it's the best structured proxy available. Some F584 citations will be about things other than odor (e.g. privacy, temperature). Treat the output as a prioritized list to skim, not a guaranteed match.
+**Honest limitation:** CMS's public data does not include free-text inspector narratives, so this isn't a literal "mentions urine odor" search — it's the best structured proxy available. Restricting to complaint-driven F584 citations skews heavily toward odor/cleanliness (vs. F584 citations from routine surveys, which more often hit other sub-issues like privacy or temperature), but some complaint-driven citations will still be about something else. Treat the output as a prioritized list to skim/verify (e.g. via the ProPublica link per row), not a guaranteed match.
 
 ## What's in the output
 
