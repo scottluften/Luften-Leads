@@ -1,4 +1,6 @@
 import csv
+import hashlib
+import json
 import os
 import requests
 
@@ -77,7 +79,13 @@ def build_leads(citations, providers):
         if not provider:
             continue
         rank = SEVERITY_RANK.get(c["scope_severity_code"], 0)
+        # Stable across re-runs (same citation always hashes the same way),
+        # used as the key for the "contacted" flag in the shared backend.
+        lead_id = hashlib.sha1(
+            f"{ccn}|{c['survey_date']}|{c['deficiency_tag_number']}".encode()
+        ).hexdigest()[:12]
         leads.append({
+            "lead_id": lead_id,
             "facility_name": c["provider_name"],
             "address": c["provider_address"],
             "city": c["citytown"],
@@ -99,8 +107,8 @@ def build_leads(citations, providers):
 
 def save_csv(leads, path):
     fields = [
-        "facility_name", "address", "city", "state", "zip_code", "phone",
-        "ownership_type", "chain_name", "overall_rating",
+        "lead_id", "facility_name", "address", "city", "state", "zip_code",
+        "phone", "ownership_type", "chain_name", "overall_rating",
         "health_inspection_rating", "survey_date", "scope_severity_code",
         "severity_rank", "citation_status",
     ]
@@ -111,14 +119,21 @@ def save_csv(leads, path):
     print(f"Saved {len(leads)} leads to {path}")
 
 
+def save_json(leads, path):
+    with open(path, "w") as f:
+        json.dump(leads, f, indent=2)
+    print(f"Saved {len(leads)} leads to {path}")
+
+
 def main():
     print("Fetching F584 (unsafe/unclean environment) citations...")
     citations = fetch_citations()
     print("Fetching facility contact/rating info...")
     providers = fetch_providers()
     leads = build_leads(citations, providers)
-    out_path = os.path.join(os.path.dirname(__file__), "..", "output", "leads.csv")
-    save_csv(leads, out_path)
+    out_dir = os.path.join(os.path.dirname(__file__), "..", "output")
+    save_csv(leads, os.path.join(out_dir, "leads.csv"))
+    save_json(leads, os.path.join(out_dir, "leads.json"))
 
 
 if __name__ == "__main__":

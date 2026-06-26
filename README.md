@@ -36,3 +36,20 @@ No credentials needed — CMS's Provider Data Catalog API is public. Re-run any 
 ## Current service states
 
 Local: `NY`, `NJ`, `PA`. Shipped: `GA`, `CO`, `CT`, `AR`, `IN`, `KS`, `NC`, `FL`. Edit the `STATES` list in `scripts/find_leads.py` to add/remove states as Luften's service area changes.
+
+## Interactive version (`index.html`)
+
+A searchable/sortable/filterable table of the leads, with a "Mark contacted" button per row. Meant to be hosted on **GitHub Pages** (free, no build step, doesn't touch Netlify credits).
+
+Since GitHub Pages is static-only, the "contacted" flag needs somewhere shared to live so it's visible across people/devices. That's a **Google Sheet + Apps Script**, set up once:
+
+1. Create a new Google Sheet. Rename one tab to `Contacted`. Add a header row: `lead_id | contacted | contacted_by | contacted_at | note`.
+2. In the Sheet, go to **Extensions → Apps Script**. Delete the default code and paste in the contents of `apps-script/Code.gs` from this repo.
+3. Click **Deploy → New deployment → type: Web app**. Set "Execute as: Me" and "Who has access: Anyone". Deploy, and authorize when prompted.
+4. Copy the **Web app URL** it gives you.
+5. Open `index.html` in this repo and paste that URL into the `const API_URL = "";` line near the top of the `<script>` block.
+6. Commit and push. Enable GitHub Pages in this repo's **Settings → Pages** (source: `main` branch, root) if not already on.
+
+Until step 5 is done, the page still works (table, search, filters) but "Mark contacted" won't be saved anywhere — it'll show a banner reminding you the API isn't configured.
+
+Re-running `scripts/find_leads.py` regenerates `output/leads.json` with the same `lead_id` for unchanged citations, so contacted status survives a refresh.
