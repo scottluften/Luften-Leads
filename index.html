@@ -19,6 +19,7 @@
   }
   .wrap { max-width: 1300px; margin: 0 auto; padding: 24px; }
   h1 { font-size: 20px; margin: 0 0 4px; }
+
   .sub { color: var(--text-sub); font-size: 13px; margin-bottom: 20px; }
   .controls {
     display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
@@ -100,10 +101,11 @@
 
 <script>
 // Paste your deployed Apps Script Web App URL here after setup (see README).
-const API_URL = "";
+const API_URL = "https://script.google.com/a/macros/luften.net/s/AKfycbwYZDJywqrmhCYygOJ-zWot4vJx4E4XrWsU8ePYwxF1-4_EEk-fOdEbc2HSTyyvtF3J/exec";
 
 let LEADS = [];
 let CONTACTED = {};
+
 let sortKey = "severity_rank";
 let sortDir = -1;
 
