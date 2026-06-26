@@ -59,30 +59,20 @@
   a.phone-link, a.maps-link { color: var(--text); text-decoration: none; }
   a.phone-link:hover, a.maps-link:hover { color: var(--accent); }
 
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 900px; }
+
+  #show-more-wrap { text-align: center; margin-top: 14px; }
+  #show-more-btn {
+    background: var(--card); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 18px; font-size: 13px; cursor: pointer;
+  }
+
   @media (max-width: 700px) {
     .wrap { padding: 14px; }
     .controls { flex-direction: column; }
     .controls input, .controls select { width: 100%; }
-
-    table, thead, tbody, th, td, tr { display: block; }
-    thead { display: none; }
-    tbody tr {
-      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-      margin-bottom: 12px; padding: 12px;
-    }
-    tbody tr:hover { background: var(--card); }
-    tbody td {
-      border-bottom: none; padding: 6px 0; display: flex;
-      justify-content: space-between; align-items: center; gap: 10px;
-    }
-    tbody td::before {
-      content: attr(data-label); color: var(--text-sub); font-size: 11px;
-      text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
-    }
-    tbody td:first-child::before { display: none; }
-    tbody td:first-child { display: block; }
-    tbody td:first-child .facility { font-size: 15px; }
-    button.contact-btn { width: 100%; padding: 10px; font-size: 13px; }
+    button.contact-btn { padding: 8px 10px; }
   }
 </style>
 </head>
@@ -110,21 +100,26 @@
   </div>
 
   <div class="stat" id="stat-line"></div>
-  <table>
-    <thead>
-      <tr>
-        <th data-sort="facility_name">Facility</th>
-        <th data-sort="state">Location</th>
-        <th data-sort="phone">Phone</th>
-        <th data-sort="severity_rank">Severity</th>
-        <th data-sort="survey_date">Citation date</th>
-        <th data-sort="overall_rating">Rating</th>
-        <th data-sort="chain_name">Chain</th>
-        <th>Contacted</th>
-      </tr>
-    </thead>
-    <tbody id="rows"></tbody>
-  </table>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="facility_name">Facility</th>
+          <th data-sort="state">Location</th>
+          <th data-sort="phone">Phone</th>
+          <th data-sort="severity_rank">Severity</th>
+          <th data-sort="survey_date">Citation date</th>
+          <th data-sort="overall_rating">Rating</th>
+          <th data-sort="chain_name">Chain</th>
+          <th>Contacted</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div id="show-more-wrap" style="display:none;">
+    <button id="show-more-btn">Show more</button>
+  </div>
 </div>
 
 <script>
@@ -136,8 +131,14 @@ let CONTACTED = {};
 
 let sortKey = "severity_rank";
 let sortDir = -1;
+let pageSize = 100;
 
 const SEV_LABEL = { 1: "A-C", 2: "D-F", 3: "G-I", 4: "J-L" };
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
 
 async function init() {
   if (!API_URL) {
@@ -163,17 +164,23 @@ async function init() {
   document.getElementById('state-filter').innerHTML +=
     states.map(s => `<option value="${s}">${s}</option>`).join('');
 
-  ['search', 'state-filter', 'severity-filter', 'contacted-filter'].forEach(id =>
-    document.getElementById(id).addEventListener('input', render)
+  const resetAndRender = () => { pageSize = 100; render(); };
+  document.getElementById('search').addEventListener('input', debounce(resetAndRender, 200));
+  ['state-filter', 'severity-filter', 'contacted-filter'].forEach(id =>
+    document.getElementById(id).addEventListener('input', resetAndRender)
   );
   document.querySelectorAll('thead th[data-sort]').forEach(th =>
     th.addEventListener('click', () => {
       const key = th.dataset.sort;
       sortDir = (sortKey === key) ? -sortDir : -1;
       sortKey = key;
-      render();
+      resetAndRender();
     })
   );
+  document.getElementById('show-more-btn').addEventListener('click', () => {
+    pageSize += 100;
+    render();
+  });
 
   render();
 }
@@ -200,29 +207,33 @@ function render() {
     return (av > bv ? 1 : -1) * sortDir;
   });
 
-  document.getElementById('stat-line').textContent =
-    `${rows.length} of ${LEADS.length} leads`;
+  const total = rows.length;
+  const visible = rows.slice(0, pageSize);
 
-  document.getElementById('rows').innerHTML = rows.map(l => {
+  document.getElementById('stat-line').textContent =
+    `Showing ${visible.length} of ${total} matching leads (${LEADS.length} total)`;
+
+  document.getElementById('rows').innerHTML = visible.map(l => {
     const isContacted = !!(CONTACTED[l.lead_id] && CONTACTED[l.lead_id].contacted);
     const mapsQuery = encodeURIComponent(`${l.address}, ${l.city}, ${l.state} ${l.zip_code}`);
     const phoneDigits = (l.phone || '').replace(/\D/g, '');
     return `
       <tr class="${isContacted ? 'contacted' : ''}">
         <td><div class="facility">${l.facility_name}</div><a class="maps-link meta" href="https://maps.google.com/?q=${mapsQuery}" target="_blank" rel="noopener">${l.address}</a></td>
-        <td data-label="Location">${l.city}, ${l.state} ${l.zip_code}</td>
-        <td data-label="Phone">${phoneDigits ? `<a class="phone-link" href="tel:${phoneDigits}">${l.phone}</a>` : '—'}</td>
-        <td data-label="Severity"><span class="sev sev-${l.severity_rank}">${SEV_LABEL[l.severity_rank] || '—'} (${l.scope_severity_code})</span></td>
-        <td data-label="Citation date">${l.survey_date}</td>
-        <td data-label="Rating">${l.overall_rating ? l.overall_rating + '★' : '—'}</td>
-        <td data-label="Chain" class="meta">${l.chain_name || '—'}</td>
-        <td data-label="Contacted"><button class="contact-btn ${isContacted ? 'is-contacted' : ''}" data-id="${l.lead_id}">${isContacted ? 'Contacted ✓' : 'Mark contacted'}</button></td>
+        <td>${l.city}, ${l.state} ${l.zip_code}</td>
+        <td>${phoneDigits ? `<a class="phone-link" href="tel:${phoneDigits}">${l.phone}</a>` : '—'}</td>
+        <td><span class="sev sev-${l.severity_rank}">${SEV_LABEL[l.severity_rank] || '—'} (${l.scope_severity_code})</span></td>
+        <td>${l.survey_date}</td>
+        <td>${l.overall_rating ? l.overall_rating + '★' : '—'}</td>
+        <td class="meta">${l.chain_name || '—'}</td>
+        <td><button class="contact-btn ${isContacted ? 'is-contacted' : ''}" data-id="${l.lead_id}">${isContacted ? 'Contacted ✓' : 'Mark contacted'}</button></td>
       </tr>`;
   }).join('');
 
   document.querySelectorAll('.contact-btn').forEach(btn =>
     btn.addEventListener('click', () => toggleContacted(btn.dataset.id))
   );
+  document.getElementById('show-more-wrap').style.display = total > pageSize ? '' : 'none';
 }
 
 async function toggleContacted(leadId) {
