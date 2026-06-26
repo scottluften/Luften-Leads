@@ -111,6 +111,7 @@
           <th data-sort="survey_date">Citation date</th>
           <th data-sort="overall_rating">Rating</th>
           <th data-sort="chain_name">Chain</th>
+          <th>Reports</th>
           <th>Contacted</th>
         </tr>
       </thead>
@@ -226,6 +227,7 @@ function render() {
         <td>${l.survey_date}</td>
         <td>${l.overall_rating ? l.overall_rating + '★' : '—'}</td>
         <td class="meta">${l.chain_name || '—'}</td>
+        <td>${l.propublica_search_url ? `<a class="maps-link meta" href="${l.propublica_search_url}" target="_blank" rel="noopener">Inspection reports</a>` : '—'}</td>
         <td><button class="contact-btn ${isContacted ? 'is-contacted' : ''}" data-id="${l.lead_id}">${isContacted ? 'Contacted ✓' : 'Mark contacted'}</button></td>
       </tr>`;
   }).join('');

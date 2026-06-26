@@ -2,7 +2,10 @@ import csv
 import hashlib
 import json
 import os
+import urllib.parse
 import requests
+
+PROPUBLICA_SEARCH_URL = "https://projects.propublica.org/nursing-homes/findings/search"
 
 DEFICIENCIES_DATASET = "r5ix-sfxw"
 PROVIDER_DATASET = "4pq5-n9py"
@@ -104,6 +107,8 @@ def build_leads(citations, providers):
             "from_complaint": c.get("complaint_deficiency", ""),
             "infection_control_related": c.get("infection_control_inspection_deficiency", ""),
             "deficiency_description": c.get("deficiency_description", ""),
+            "propublica_search_url": f"{PROPUBLICA_SEARCH_URL}?search="
+            + urllib.parse.quote(c["provider_name"]),
         })
     leads.sort(key=lambda l: (l["severity_rank"], l["survey_date"]), reverse=True)
     return leads
@@ -116,6 +121,7 @@ def save_csv(leads, path):
         "health_inspection_rating", "survey_date", "scope_severity_code",
         "severity_rank", "citation_status", "correction_date",
         "from_complaint", "infection_control_related", "deficiency_description",
+        "propublica_search_url",
     ]
     with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
