@@ -80,6 +80,18 @@
     .controls input, .controls select { width: 100%; }
     button.contact-btn { padding: 8px 10px; }
   }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 18px; }
+  .tab-btn {
+    background: var(--card); color: var(--text-sub); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 16px; font-size: 13px; cursor: pointer;
+  }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .tag-badge.region-warn { border-color: var(--sev-mid); color: var(--sev-mid); }
+  .tag-badge.overlap { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .quote { font-style: italic; color: var(--text-sub); }
 </style>
 </head>
 <body>
@@ -95,59 +107,107 @@
   </div>
   <div id="config-banner"></div>
 
-  <div class="controls">
-    <input id="search" type="text" placeholder="Search facility, city, or state...">
-    <select id="state-filter"><option value="">All states</option></select>
-    <select id="severity-filter">
-      <option value="">All severities</option>
-      <option value="4">Immediate jeopardy (J-L)</option>
-      <option value="3">Actual harm (G-I)</option>
-      <option value="2">Potential for more than minimal (D-F)</option>
-      <option value="1">Minimal (A-C)</option>
-    </select>
-    <select id="code-filter">
-      <option value="">All codes</option>
-      <option value="both">F584 + F690 (both)</option>
-      <option value="0584">F584 only</option>
-      <option value="0690">F690 only</option>
-    </select>
-    <select id="status-filter">
-      <option value="">All correction statuses</option>
-      <option value="3">No plan of correction yet (most urgent)</option>
-      <option value="2">Has plan, no date yet</option>
-      <option value="1">Has correction date</option>
-    </select>
-    <select id="contacted-filter">
-      <option value="">All leads</option>
-      <option value="hide">Hide contacted</option>
-      <option value="only">Only contacted</option>
-    </select>
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-btn-public" data-tab="public">CMS (public data)</button>
+    <button class="tab-btn" id="tab-btn-origami" data-tab="origami">Origami (AI-sourced)</button>
   </div>
 
-  <div class="stat" id="stat-line"></div>
-  <div class="table-scroll">
-    <table>
-      <thead>
-        <tr>
-          <th data-sort="facility_name">Facility</th>
-          <th data-sort="state">Location</th>
-          <th data-sort="phone">Phone</th>
-          <th data-sort="severity_rank">Severity</th>
-          <th data-sort="matched_tags">Code(s)</th>
-          <th data-sort="survey_date">Citation date</th>
-          <th data-sort="status_rank">Status</th>
-          <th data-sort="overall_rating">Rating</th>
-          <th data-sort="staffing_rating">Staffing</th>
-          <th data-sort="chain_name">Chain</th>
-          <th>Reports</th>
-          <th>Contacted</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
+  <div class="tab-panel active" id="tab-public">
+    <div class="controls">
+      <input id="search" type="text" placeholder="Search facility, city, or state...">
+      <select id="state-filter"><option value="">All states</option></select>
+      <select id="severity-filter">
+        <option value="">All severities</option>
+        <option value="4">Immediate jeopardy (J-L)</option>
+        <option value="3">Actual harm (G-I)</option>
+        <option value="2">Potential for more than minimal (D-F)</option>
+        <option value="1">Minimal (A-C)</option>
+      </select>
+      <select id="code-filter">
+        <option value="">All codes</option>
+        <option value="both">F584 + F690 (both)</option>
+        <option value="0584">F584 only</option>
+        <option value="0690">F690 only</option>
+      </select>
+      <select id="status-filter">
+        <option value="">All correction statuses</option>
+        <option value="3">No plan of correction yet (most urgent)</option>
+        <option value="2">Has plan, no date yet</option>
+        <option value="1">Has correction date</option>
+      </select>
+      <select id="contacted-filter">
+        <option value="">All leads</option>
+        <option value="hide">Hide contacted</option>
+        <option value="only">Only contacted</option>
+      </select>
+    </div>
+
+    <div class="stat" id="stat-line"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="facility_name">Facility</th>
+            <th data-sort="state">Location</th>
+            <th data-sort="phone">Phone</th>
+            <th data-sort="severity_rank">Severity</th>
+            <th data-sort="matched_tags">Code(s)</th>
+            <th data-sort="survey_date">Citation date</th>
+            <th data-sort="status_rank">Status</th>
+            <th data-sort="overall_rating">Rating</th>
+            <th data-sort="staffing_rating">Staffing</th>
+            <th data-sort="chain_name">Chain</th>
+            <th>Reports</th>
+            <th>Contacted</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div id="show-more-wrap" style="display:none;">
+      <button id="show-more-btn">Show more</button>
+    </div>
   </div>
-  <div id="show-more-wrap" style="display:none;">
-    <button id="show-more-btn">Show more</button>
+
+  <div class="tab-panel" id="tab-origami">
+    <div class="sub">
+      Facilities found by Origami's AI agent searching reviews, local news, and
+      complaints for odor/cleanliness language — not from CMS structured data.
+      Rows already filtered to "genuine complaint" evidence with a sourced quote;
+      <strong>Out of region</strong> means the agent returned it outside the area it
+      was asked to search, and <strong>Also in CMS list</strong> means the same
+      facility independently has a complaint-driven F584/F690 citation — the
+      strongest combined signal.
+    </div>
+    <div class="controls">
+      <input id="origami-search" type="text" placeholder="Search facility, city, or state...">
+      <select id="origami-state-filter"><option value="">All states</option></select>
+      <select id="origami-region-filter">
+        <option value="">All results</option>
+        <option value="hide">Hide out-of-region</option>
+      </select>
+      <select id="origami-overlap-filter">
+        <option value="">All results</option>
+        <option value="only">Only also-in-CMS-list</option>
+      </select>
+    </div>
+    <div class="stat" id="origami-stat-line"></div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Facility</th>
+            <th>Location</th>
+            <th>Phone</th>
+            <th>Administrator</th>
+            <th>Email</th>
+            <th>Evidence</th>
+            <th>Flags</th>
+          </tr>
+        </thead>
+        <tbody id="origami-rows"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -157,6 +217,7 @@ const API_URL = "https://script.google.com/a/macros/luften.net/s/AKfycbwYZDJywqr
 
 let LEADS = [];
 let CONTACTED = {};
+let ORIGAMI_LEADS = [];
 
 // null preserves leads.json's order, which already ranks by matched-tags
 // count, then correction status, then severity, then recency -- a single
@@ -216,6 +277,90 @@ async function init() {
   });
 
   render();
+
+  initTabs();
+  initOrigami();
+}
+
+function initTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn =>
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+    })
+  );
+}
+
+function normalizeKey(name, zip) {
+  return `${(name || '').trim().toLowerCase()}|${(zip || '').trim().slice(0, 5)}`;
+}
+
+async function initOrigami() {
+  try {
+    const res = await fetch('output/origami_leads.json');
+    ORIGAMI_LEADS = await res.json();
+  } catch (e) {
+    console.error('Failed to load Origami leads', e);
+    ORIGAMI_LEADS = [];
+  }
+
+  const cmsKeys = new Set(LEADS.map(l => normalizeKey(l.facility_name, l.zip_code)));
+  ORIGAMI_LEADS.forEach(r => {
+    const addr = r['full-address'] || {};
+    r._in_cms_list = cmsKeys.has(normalizeKey(r.title, addr.zip_code));
+  });
+
+  const states = [...new Set(ORIGAMI_LEADS.map(r => (r['full-address'] || {}).state).filter(Boolean))].sort();
+  document.getElementById('origami-state-filter').innerHTML +=
+    states.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('origami-search').addEventListener('input', debounce(renderOrigami, 200));
+  ['origami-state-filter', 'origami-region-filter', 'origami-overlap-filter'].forEach(id =>
+    document.getElementById(id).addEventListener('input', renderOrigami)
+  );
+
+  renderOrigami();
+}
+
+function renderOrigami() {
+  const term = document.getElementById('origami-search').value.toLowerCase();
+  const stateF = document.getElementById('origami-state-filter').value;
+  const regionF = document.getElementById('origami-region-filter').value;
+  const overlapF = document.getElementById('origami-overlap-filter').value;
+
+  let rows = ORIGAMI_LEADS.filter(r => {
+    const addr = r['full-address'] || {};
+    if (term && !`${r.title} ${addr.city} ${addr.state}`.toLowerCase().includes(term)) return false;
+    if (stateF && addr.state !== stateF) return false;
+    if (regionF === 'hide' && r.out_of_region) return false;
+    if (overlapF === 'only' && !r._in_cms_list) return false;
+    return true;
+  });
+
+  document.getElementById('origami-stat-line').textContent =
+    `Showing ${rows.length} of ${ORIGAMI_LEADS.length} Origami leads`;
+
+  document.getElementById('origami-rows').innerHTML = rows.map(r => {
+    const addr = r['full-address'] || {};
+    const phone = (r['contact-phone'] || {}).phone_number;
+    const phoneDigits = (phone || '').replace(/\D/g, '');
+    const admin = (r['administrator-name'] || {}).administrator_name;
+    const email = (r['contact-email'] || {}).email_address;
+    const odor = r['odor-evidence'] || {};
+    const mapsQuery = encodeURIComponent(`${addr.street_address || ''}, ${addr.city || ''}, ${addr.state || ''} ${addr.zip_code || ''}`);
+    return `
+      <tr>
+        <td><div class="facility">${r.title || '—'}</div>${addr.street_address ? `<a class="maps-link meta" href="https://maps.google.com/?q=${mapsQuery}" target="_blank" rel="noopener">${addr.street_address}</a>` : ''}</td>
+        <td>${addr.city || '—'}, ${addr.state || '—'} ${addr.zip_code || ''}</td>
+        <td>${phoneDigits ? `<a class="phone-link" href="tel:${phoneDigits}">${phone}</a>` : '—'}</td>
+        <td>${admin || '—'}</td>
+        <td>${email ? `<a class="phone-link" href="mailto:${email}">${email}</a>` : '—'}</td>
+        <td class="quote">${odor.evidence_quote ? `"${odor.evidence_quote}"${odor.evidence_source_url ? ` <a class="meta" href="${odor.evidence_source_url}" target="_blank" rel="noopener">[source]</a>` : ''}` : '—'}</td>
+        <td>${r.out_of_region ? '<span class="tag-badge region-warn">Out of region</span>' : ''}${r._in_cms_list ? '<span class="tag-badge overlap">Also in CMS list</span>' : ''}</td>
+      </tr>`;
+  }).join('');
 }
 
 function render() {

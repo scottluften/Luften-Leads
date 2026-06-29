@@ -190,9 +190,20 @@ def save_csv(leads, path):
     print(f"Saved {len(leads)} leads to {path}")
 
 
+# Fields index.html actually renders -- the JSON it fetches doesn't need
+# the rest (e.g. deficiency_description alone is ~16% of the file's bytes).
+WEB_FIELDS = [
+    "lead_id", "facility_name", "address", "city", "state", "zip_code",
+    "phone", "overall_rating", "staffing_rating", "chain_name",
+    "survey_date", "scope_severity_code", "severity_rank", "status_rank",
+    "citation_count", "matched_tags", "propublica_search_url",
+]
+
+
 def save_json(leads, path):
+    slim = [{k: l[k] for k in WEB_FIELDS} for l in leads]
     with open(path, "w") as f:
-        json.dump(leads, f, indent=2)
+        json.dump(slim, f, separators=(",", ":"))
     print(f"Saved {len(leads)} leads to {path}")
 
 
