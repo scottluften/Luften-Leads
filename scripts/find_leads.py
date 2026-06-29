@@ -21,11 +21,14 @@ SEVERITY_RANK = {
     **{c: 4 for c in "JKL"},
 }
 
-# F584 covers "safe, clean, comfortable, homelike environment" — the closest
-# structured CMS tag to odor/cleanliness complaints. CMS's public data does
-# not include free-text inspector narratives (e.g. literal mentions of
-# "urine odor"), only this tag-level categorization.
-TARGET_TAG = "0584"
+# CMS's public data has no free-text inspector narratives (e.g. literal
+# mentions of "urine odor"), only tag-level categorization, so these two tags
+# are the closest available proxies for an odor complaint:
+# F584 - "safe, clean, comfortable, homelike environment" (broad environmental
+#   catch-all; can also fire for unrelated issues like disrepair or lighting).
+# F690 - incontinence/catheter care and UTI prevention; poor care here is a
+#   direct, literal cause of urine odor, so it's a tighter signal than F584.
+TARGET_TAGS = ["0584", "0690"]
 
 STATES = [
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA",
@@ -59,18 +62,20 @@ def fetch_all(dataset_id, conditions, limit=500):
 def fetch_citations():
     citations = []
     for state in STATES:
-        rows = fetch_all(DEFICIENCIES_DATASET, [
-            ("state", "=", state),
-            ("deficiency_tag_number", "=", TARGET_TAG),
-            # Complaint-triggered F584 citations come from a specific resident/family
-            # complaint, not a routine survey finding -- for this F-tag, complaints
-            # skew heavily toward odor/cleanliness issues rather than e.g. privacy or
-            # temperature, which makes this the closest available proxy for "odor
-            # complaint" without per-citation narrative text.
-            ("complaint_deficiency", "=", "Y"),
-        ])
-        print(f"  {state}: {len(rows)} complaint-driven citations")
-        citations.extend(rows)
+        state_count = 0
+        for tag in TARGET_TAGS:
+            rows = fetch_all(DEFICIENCIES_DATASET, [
+                ("state", "=", state),
+                ("deficiency_tag_number", "=", tag),
+                # Complaint-triggered citations come from a specific resident/family
+                # complaint, not a routine survey finding, which makes them the
+                # closest available proxy for "odor complaint" without per-citation
+                # narrative text.
+                ("complaint_deficiency", "=", "Y"),
+            ])
+            state_count += len(rows)
+            citations.extend(rows)
+        print(f"  {state}: {state_count} complaint-driven citations")
     return citations
 
 
@@ -105,6 +110,9 @@ def build_leads(citations, providers):
         # Stable across re-runs (same facility always hashes the same way),
         # used as the key for the "contacted" flag in the shared backend.
         lead_id = hashlib.sha1(ccn.encode()).hexdigest()[:12]
+        # Facilities cited under both F584 and F690 have two independent
+        # signals pointing at odor, which makes them a stronger lead.
+        matched_tags = sorted({c["deficiency_tag_number"] for c in ccn_citations})
         leads.append({
             "lead_id": lead_id,
             "facility_name": c["provider_name"],
@@ -126,10 +134,14 @@ def build_leads(citations, providers):
             "infection_control_related": c.get("infection_control_inspection_deficiency", ""),
             "deficiency_description": c.get("deficiency_description", ""),
             "citation_count": len(ccn_citations),
+            "matched_tags": ",".join(matched_tags),
             "propublica_search_url": f"{PROPUBLICA_SEARCH_URL}?search="
             + urllib.parse.quote(c["provider_name"]),
         })
-    leads.sort(key=lambda l: (l["severity_rank"], l["survey_date"]), reverse=True)
+    leads.sort(
+        key=lambda l: (len(l["matched_tags"].split(",")), l["severity_rank"], l["survey_date"]),
+        reverse=True,
+    )
     return leads
 
 
@@ -140,7 +152,7 @@ def save_csv(leads, path):
         "health_inspection_rating", "survey_date", "scope_severity_code",
         "severity_rank", "citation_status", "correction_date",
         "from_complaint", "infection_control_related", "deficiency_description",
-        "citation_count", "propublica_search_url",
+        "citation_count", "matched_tags", "propublica_search_url",
     ]
     with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)
@@ -156,7 +168,7 @@ def save_json(leads, path):
 
 
 def main():
-    print("Fetching F584 (unsafe/unclean environment) citations...")
+    print("Fetching F584/F690 (environment/incontinence care) citations...")
     citations = fetch_citations()
     print("Fetching facility contact/rating info...")
     providers = fetch_providers()
