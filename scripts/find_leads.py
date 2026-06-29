@@ -81,18 +81,27 @@ def fetch_providers():
 
 
 def build_leads(citations, providers):
-    leads = []
+    by_ccn = {}
     for c in citations:
         ccn = c["cms_certification_number_ccn"]
-        provider = providers.get(ccn)
-        if not provider:
+        if providers.get(ccn) is None:
             continue
+        by_ccn.setdefault(ccn, []).append(c)
+
+    leads = []
+    for ccn, ccn_citations in by_ccn.items():
+        provider = providers[ccn]
+        # Multiple complaint-driven F584 citations at one facility is a stronger
+        # signal than any single citation, so leads are one row per facility and
+        # surface the most severe/recent citation, with the rest counted.
+        c = max(
+            ccn_citations,
+            key=lambda c: (SEVERITY_RANK.get(c["scope_severity_code"], 0), c["survey_date"]),
+        )
         rank = SEVERITY_RANK.get(c["scope_severity_code"], 0)
-        # Stable across re-runs (same citation always hashes the same way),
+        # Stable across re-runs (same facility always hashes the same way),
         # used as the key for the "contacted" flag in the shared backend.
-        lead_id = hashlib.sha1(
-            f"{ccn}|{c['survey_date']}|{c['deficiency_tag_number']}".encode()
-        ).hexdigest()[:12]
+        lead_id = hashlib.sha1(ccn.encode()).hexdigest()[:12]
         leads.append({
             "lead_id": lead_id,
             "facility_name": c["provider_name"],
@@ -113,6 +122,7 @@ def build_leads(citations, providers):
             "from_complaint": c.get("complaint_deficiency", ""),
             "infection_control_related": c.get("infection_control_inspection_deficiency", ""),
             "deficiency_description": c.get("deficiency_description", ""),
+            "citation_count": len(ccn_citations),
             "propublica_search_url": f"{PROPUBLICA_SEARCH_URL}?search="
             + urllib.parse.quote(c["provider_name"]),
         })
@@ -127,7 +137,7 @@ def save_csv(leads, path):
         "health_inspection_rating", "survey_date", "scope_severity_code",
         "severity_rank", "citation_status", "correction_date",
         "from_complaint", "infection_control_related", "deficiency_description",
-        "propublica_search_url",
+        "citation_count", "propublica_search_url",
     ]
     with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fields)

@@ -223,7 +223,7 @@ function render() {
         <td><div class="facility">${l.facility_name}</div><a class="maps-link meta" href="https://maps.google.com/?q=${mapsQuery}" target="_blank" rel="noopener">${l.address}</a></td>
         <td>${l.city}, ${l.state} ${l.zip_code}</td>
         <td>${phoneDigits ? `<a class="phone-link" href="tel:${phoneDigits}">${l.phone}</a>` : '—'}</td>
-        <td><span class="sev sev-${l.severity_rank}">${SEV_LABEL[l.severity_rank] || '—'} (${l.scope_severity_code})</span></td>
+        <td><span class="sev sev-${l.severity_rank}">${SEV_LABEL[l.severity_rank] || '—'} (${l.scope_severity_code})</span>${l.citation_count > 1 ? ` <span class="meta">×${l.citation_count}</span>` : ''}</td>
         <td>${l.survey_date}</td>
         <td>${l.overall_rating ? l.overall_rating + '★' : '—'}</td>
         <td class="meta">${l.chain_name || '—'}</td>
