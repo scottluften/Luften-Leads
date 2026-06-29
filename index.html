@@ -46,6 +46,11 @@
   .sev-3 { background: var(--sev-high); color: #2a1404; }
   .sev-4 { background: var(--sev-crit); color: #2a0808; }
   .facility { font-weight: 600; }
+  .tag-badge {
+    display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px;
+    font-weight: 600; margin-right: 4px; border: 1px solid var(--border); color: var(--text-sub);
+  }
+  .tag-badge.both { background: var(--accent); border-color: var(--accent); color: #fff; }
   .meta { color: var(--text-sub); font-size: 12px; }
   button.contact-btn {
     background: var(--card); color: var(--text); border: 1px solid var(--border);
@@ -79,7 +84,14 @@
 <body>
 <div class="wrap">
   <h1>Luften Leads</h1>
-  <div class="sub">Nursing home facilities with CMS "unsafe/unclean environment" (F584) citations, ranked by severity and recency.</div>
+  <div class="sub">
+    Nursing home facilities with complaint-driven CMS citations under
+    <strong>F584</strong> (failure to provide a safe, clean, comfortable, homelike
+    environment) and/or <strong>F690</strong> (failure to provide appropriate
+    incontinence/catheter care) — the closest available proxies for an odor
+    complaint, since CMS doesn't publish inspector narrative text. Facilities
+    matching both codes are ranked highest, then by severity and recency.
+  </div>
   <div id="config-banner"></div>
 
   <div class="controls">
@@ -91,6 +103,12 @@
       <option value="3">Actual harm (G-I)</option>
       <option value="2">Potential for more than minimal (D-F)</option>
       <option value="1">Minimal (A-C)</option>
+    </select>
+    <select id="code-filter">
+      <option value="">All codes</option>
+      <option value="both">F584 + F690 (both)</option>
+      <option value="0584">F584 only</option>
+      <option value="0690">F690 only</option>
     </select>
     <select id="contacted-filter">
       <option value="">All leads</option>
@@ -108,6 +126,7 @@
           <th data-sort="state">Location</th>
           <th data-sort="phone">Phone</th>
           <th data-sort="severity_rank">Severity</th>
+          <th data-sort="matched_tags">Code(s)</th>
           <th data-sort="survey_date">Citation date</th>
           <th data-sort="overall_rating">Rating</th>
           <th data-sort="chain_name">Chain</th>
@@ -167,7 +186,7 @@ async function init() {
 
   const resetAndRender = () => { pageSize = 100; render(); };
   document.getElementById('search').addEventListener('input', debounce(resetAndRender, 200));
-  ['state-filter', 'severity-filter', 'contacted-filter'].forEach(id =>
+  ['state-filter', 'severity-filter', 'code-filter', 'contacted-filter'].forEach(id =>
     document.getElementById(id).addEventListener('input', resetAndRender)
   );
   document.querySelectorAll('thead th[data-sort]').forEach(th =>
@@ -190,12 +209,16 @@ function render() {
   const term = document.getElementById('search').value.toLowerCase();
   const stateF = document.getElementById('state-filter').value;
   const sevF = document.getElementById('severity-filter').value;
+  const codeF = document.getElementById('code-filter').value;
   const contactF = document.getElementById('contacted-filter').value;
 
   let rows = LEADS.filter(l => {
     if (term && !`${l.facility_name} ${l.city} ${l.state}`.toLowerCase().includes(term)) return false;
     if (stateF && l.state !== stateF) return false;
     if (sevF && String(l.severity_rank) !== sevF) return false;
+    const tags = (l.matched_tags || '').split(',').filter(Boolean);
+    if (codeF === 'both' && tags.length < 2) return false;
+    if (codeF && codeF !== 'both' && !tags.includes(codeF)) return false;
     const isContacted = !!(CONTACTED[l.lead_id] && CONTACTED[l.lead_id].contacted);
     if (contactF === 'hide' && isContacted) return false;
     if (contactF === 'only' && !isContacted) return false;
@@ -223,7 +246,11 @@ function render() {
         <td><div class="facility">${l.facility_name}</div><a class="maps-link meta" href="https://maps.google.com/?q=${mapsQuery}" target="_blank" rel="noopener">${l.address}</a></td>
         <td>${l.city}, ${l.state} ${l.zip_code}</td>
         <td>${phoneDigits ? `<a class="phone-link" href="tel:${phoneDigits}">${l.phone}</a>` : '—'}</td>
-        <td><span class="sev sev-${l.severity_rank}">${SEV_LABEL[l.severity_rank] || '—'} (${l.scope_severity_code})</span>${l.citation_count > 1 ? ` <span class="meta">×${l.citation_count}</span>` : ''}${(l.matched_tags || '').split(',').length > 1 ? ' <span class="meta">F584+F690</span>' : ''}</td>
+        <td><span class="sev sev-${l.severity_rank}">${SEV_LABEL[l.severity_rank] || '—'} (${l.scope_severity_code})</span>${l.citation_count > 1 ? ` <span class="meta">×${l.citation_count}</span>` : ''}</td>
+        <td>${(l.matched_tags || '').split(',').filter(Boolean).map(t => {
+          const isBoth = (l.matched_tags || '').split(',').filter(Boolean).length > 1;
+          return `<span class="tag-badge${isBoth ? ' both' : ''}">F${t}</span>`;
+        }).join('')}</td>
         <td>${l.survey_date}</td>
         <td>${l.overall_rating ? l.overall_rating + '★' : '—'}</td>
         <td class="meta">${l.chain_name || '—'}</td>

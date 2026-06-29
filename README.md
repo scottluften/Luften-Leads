@@ -9,18 +9,26 @@ Queries two public CMS datasets (no auth required):
 - **Health Deficiencies** (`r5ix-sfxw`) — individual inspection citations per facility.
 - **Provider Information** (`4pq5-n9py`) — facility contact/rating info (phone, address, ownership, star ratings).
 
-It filters citations to tag **F584** ("safe, clean, comfortable, homelike environment") — the closest structured CMS category to odor/cleanliness complaints — restricted to citations flagged `complaint_deficiency = Y`, i.e. ones that came from an actual resident/family complaint rather than a routine survey finding. Across Luften's current service states, it joins in facility contact info and ranks the result by citation severity (CMS's A–L scope/severity grid) then recency.
+It filters citations to two CMS tags, restricted to citations flagged `complaint_deficiency = Y` (i.e. ones that came from an actual resident/family complaint rather than a routine survey finding):
 
-**Honest limitation:** CMS's public data does not include free-text inspector narratives, so this isn't a literal "mentions urine odor" search — it's the best structured proxy available. Restricting to complaint-driven F584 citations skews heavily toward odor/cleanliness (vs. F584 citations from routine surveys, which more often hit other sub-issues like privacy or temperature), but some complaint-driven citations will still be about something else. Treat the output as a prioritized list to skim/verify (e.g. via the ProPublica link per row), not a guaranteed match.
+- **F584** — "Honor the resident's right to a safe, clean, comfortable and homelike environment." A broad environmental catch-all; the closest general-purpose CMS tag to odor/cleanliness complaints, but can also fire for unrelated issues (disrepair, lighting, temperature, privacy).
+- **F690** — "Provide appropriate care for residents who are continent or incontinent of bowel/bladder, appropriate catheter care, and appropriate care to prevent urinary tract infections." Poor incontinence/catheter care is a direct, literal cause of urine odor, making this a tighter signal than F584 on its own.
+
+It joins in facility contact info, dedupes to **one row per facility** (a facility cited multiple times shows `citation_count > 1`), and ranks the result: facilities matching **both** F584 and F690 first, then by citation severity (CMS's A–L scope/severity grid), then recency. Covers all 50 states + DC.
+
+**Honest limitation:** CMS's public data does not include free-text inspector narratives, so this isn't a literal "mentions urine odor" search — F584+F690 are the best structured proxy available. Some matching citations will still turn out to be about something else. Treat the output as a prioritized list to skim/verify (e.g. via the ProPublica link per row, which full-text searches the actual inspector narratives), not a guaranteed match.
 
 ## What's in the output
 
-`output/leads.csv` — one row per citation, with:
+`output/leads.csv` — one row per facility, with:
 
 - Facility name, address, city, state, zip
 - Phone number (real, from CMS)
 - Ownership type, chain name, overall/health-inspection star ratings
 - Citation date, severity code, and correction status
+- `matched_tags` — which of F584/F690 this facility was cited under (`0584`, `0690`, or both)
+- `citation_count` — how many complaint-driven F584/F690 citations this facility has (repeat citations are a stronger signal)
+- `propublica_search_url` — a direct link to search ProPublica's Nursing Home Inspect for this facility's full inspection narrative text, to manually verify the odor language before reaching out
 
 **Not included** (no public source exists): named administrator/manager, email address. Getting those would require manual lookup per facility or a paid contact-enrichment API (Apollo.io, ZoomInfo, Hunter.io) — a deliberate future decision, not wired up yet.
 
@@ -33,13 +41,13 @@ python scripts/find_leads.py
 
 No credentials needed — CMS's Provider Data Catalog API is public. Re-run any time to refresh; it overwrites `output/leads.csv`.
 
-## Current service states
+## States covered
 
-Local: `NY`, `NJ`, `PA`. Shipped: `GA`, `CO`, `CT`, `AR`, `IN`, `KS`, `NC`, `FL`. Edit the `STATES` list in `scripts/find_leads.py` to add/remove states as Luften's service area changes.
+All 50 states + DC. Edit the `STATES` list in `scripts/find_leads.py` to narrow this if you only want specific states.
 
 ## Interactive version (`index.html`)
 
-A searchable/sortable/filterable table of the leads, with a "Mark contacted" button per row. Meant to be hosted on **GitHub Pages** (free, no build step, doesn't touch Netlify credits).
+A searchable/sortable/filterable table of the leads, with a "Mark contacted" button per row. Filterable by state, severity, and citation code (F584 only / F690 only / both). Meant to be hosted on **GitHub Pages** (free, no build step, doesn't touch Netlify credits).
 
 Since GitHub Pages is static-only, the "contacted" flag needs somewhere shared to live so it's visible across people/devices. That's a **Google Sheet + Apps Script**, set up once:
 
