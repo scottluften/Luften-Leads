@@ -30,6 +30,17 @@ SEVERITY_RANK = {
 #   direct, literal cause of urine odor, so it's a tighter signal than F584.
 TARGET_TAGS = ["0584", "0690"]
 
+# Whether a facility has actually addressed the citation yet. "No plan of
+# correction" means the facility hasn't even committed to fixing it -- the
+# hottest kind of lead. Higher rank means more urgent/unresolved.
+STATUS_RANK = {
+    "Deficient, Provider has no plan of correction": 3,
+    "Deficient, Provider has plan of correction": 2,
+    "Deficient, Provider has date of correction": 1,
+    "Past Non-Compliance": 0,
+    "No revisit needed": 0,
+}
+
 STATES = [
     "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA",
     "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA",
@@ -104,9 +115,14 @@ def build_leads(citations, providers):
         # surface the most severe/recent citation, with the rest counted.
         c = max(
             ccn_citations,
-            key=lambda c: (SEVERITY_RANK.get(c["scope_severity_code"], 0), c["survey_date"]),
+            key=lambda c: (
+                STATUS_RANK.get(c.get("deficiency_corrected", ""), 0),
+                SEVERITY_RANK.get(c["scope_severity_code"], 0),
+                c["survey_date"],
+            ),
         )
         rank = SEVERITY_RANK.get(c["scope_severity_code"], 0)
+        status_rank = STATUS_RANK.get(c.get("deficiency_corrected", ""), 0)
         # Stable across re-runs (same facility always hashes the same way),
         # used as the key for the "contacted" flag in the shared backend.
         lead_id = hashlib.sha1(ccn.encode()).hexdigest()[:12]
@@ -125,9 +141,15 @@ def build_leads(citations, providers):
             "chain_name": provider.get("chain_name", ""),
             "overall_rating": provider.get("overall_rating", ""),
             "health_inspection_rating": provider.get("health_inspection_rating", ""),
+            "staffing_rating": provider.get("staffing_rating", ""),
+            "nurse_staffing_hours_per_resident_day": provider.get(
+                "reported_total_nurse_staffing_hours_per_resident_per_day", ""
+            ),
+            "nursing_staff_turnover_pct": provider.get("total_nursing_staff_turnover", ""),
             "survey_date": c["survey_date"],
             "scope_severity_code": c["scope_severity_code"],
             "severity_rank": rank,
+            "status_rank": status_rank,
             "citation_status": c.get("deficiency_corrected", ""),
             "correction_date": c.get("correction_date", ""),
             "from_complaint": c.get("complaint_deficiency", ""),
@@ -139,7 +161,12 @@ def build_leads(citations, providers):
             + urllib.parse.quote(c["provider_name"]),
         })
     leads.sort(
-        key=lambda l: (len(l["matched_tags"].split(",")), l["severity_rank"], l["survey_date"]),
+        key=lambda l: (
+            len(l["matched_tags"].split(",")),
+            l["status_rank"],
+            l["severity_rank"],
+            l["survey_date"],
+        ),
         reverse=True,
     )
     return leads
@@ -149,8 +176,10 @@ def save_csv(leads, path):
     fields = [
         "lead_id", "facility_name", "address", "city", "state", "zip_code",
         "phone", "ownership_type", "chain_name", "overall_rating",
-        "health_inspection_rating", "survey_date", "scope_severity_code",
-        "severity_rank", "citation_status", "correction_date",
+        "health_inspection_rating", "staffing_rating",
+        "nurse_staffing_hours_per_resident_day", "nursing_staff_turnover_pct",
+        "survey_date", "scope_severity_code", "severity_rank", "status_rank",
+        "citation_status", "correction_date",
         "from_complaint", "infection_control_related", "deficiency_description",
         "citation_count", "matched_tags", "propublica_search_url",
     ]

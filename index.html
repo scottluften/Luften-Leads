@@ -49,6 +49,7 @@
   .tag-badge {
     display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 11px;
     font-weight: 600; margin-right: 4px; border: 1px solid var(--border); color: var(--text-sub);
+    white-space: nowrap;
   }
   .tag-badge.both { background: var(--accent); border-color: var(--accent); color: #fff; }
   .meta { color: var(--text-sub); font-size: 12px; }
@@ -110,6 +111,12 @@
       <option value="0584">F584 only</option>
       <option value="0690">F690 only</option>
     </select>
+    <select id="status-filter">
+      <option value="">All correction statuses</option>
+      <option value="3">No plan of correction yet (most urgent)</option>
+      <option value="2">Has plan, no date yet</option>
+      <option value="1">Has correction date</option>
+    </select>
     <select id="contacted-filter">
       <option value="">All leads</option>
       <option value="hide">Hide contacted</option>
@@ -128,7 +135,9 @@
           <th data-sort="severity_rank">Severity</th>
           <th data-sort="matched_tags">Code(s)</th>
           <th data-sort="survey_date">Citation date</th>
+          <th data-sort="status_rank">Status</th>
           <th data-sort="overall_rating">Rating</th>
+          <th data-sort="staffing_rating">Staffing</th>
           <th data-sort="chain_name">Chain</th>
           <th>Reports</th>
           <th>Contacted</th>
@@ -149,11 +158,15 @@ const API_URL = "https://script.google.com/a/macros/luften.net/s/AKfycbwYZDJywqr
 let LEADS = [];
 let CONTACTED = {};
 
-let sortKey = "severity_rank";
+// null preserves leads.json's order, which already ranks by matched-tags
+// count, then correction status, then severity, then recency -- a single
+// column sort below can't reproduce that, so don't default to one.
+let sortKey = null;
 let sortDir = -1;
 let pageSize = 100;
 
 const SEV_LABEL = { 1: "A-C", 2: "D-F", 3: "G-I", 4: "J-L" };
+const STATUS_LABEL = { 3: "No plan yet", 2: "Plan, no date", 1: "Has date", 0: "Resolved" };
 
 function debounce(fn, ms) {
   let t;
@@ -186,7 +199,7 @@ async function init() {
 
   const resetAndRender = () => { pageSize = 100; render(); };
   document.getElementById('search').addEventListener('input', debounce(resetAndRender, 200));
-  ['state-filter', 'severity-filter', 'code-filter', 'contacted-filter'].forEach(id =>
+  ['state-filter', 'severity-filter', 'code-filter', 'status-filter', 'contacted-filter'].forEach(id =>
     document.getElementById(id).addEventListener('input', resetAndRender)
   );
   document.querySelectorAll('thead th[data-sort]').forEach(th =>
@@ -210,12 +223,14 @@ function render() {
   const stateF = document.getElementById('state-filter').value;
   const sevF = document.getElementById('severity-filter').value;
   const codeF = document.getElementById('code-filter').value;
+  const statusF = document.getElementById('status-filter').value;
   const contactF = document.getElementById('contacted-filter').value;
 
   let rows = LEADS.filter(l => {
     if (term && !`${l.facility_name} ${l.city} ${l.state}`.toLowerCase().includes(term)) return false;
     if (stateF && l.state !== stateF) return false;
     if (sevF && String(l.severity_rank) !== sevF) return false;
+    if (statusF && String(l.status_rank) !== statusF) return false;
     const tags = (l.matched_tags || '').split(',').filter(Boolean);
     if (codeF === 'both' && tags.length < 2) return false;
     if (codeF && codeF !== 'both' && !tags.includes(codeF)) return false;
@@ -225,7 +240,7 @@ function render() {
     return true;
   });
 
-  rows.sort((a, b) => {
+  if (sortKey) rows.sort((a, b) => {
     const av = a[sortKey], bv = b[sortKey];
     if (av === bv) return 0;
     return (av > bv ? 1 : -1) * sortDir;
@@ -252,7 +267,9 @@ function render() {
           return `<span class="tag-badge${isBoth ? ' both' : ''}">F${t}</span>`;
         }).join('')}</td>
         <td>${l.survey_date}</td>
+        <td><span class="tag-badge${l.status_rank === 3 ? ' both' : ''}">${STATUS_LABEL[l.status_rank] || '—'}</span></td>
         <td>${l.overall_rating ? l.overall_rating + '★' : '—'}</td>
+        <td>${l.staffing_rating ? l.staffing_rating + '★' : '—'}</td>
         <td class="meta">${l.chain_name || '—'}</td>
         <td>${l.propublica_search_url ? `<a class="maps-link meta" href="${l.propublica_search_url}" target="_blank" rel="noopener">Inspection reports</a>` : '—'}</td>
         <td><button class="contact-btn ${isContacted ? 'is-contacted' : ''}" data-id="${l.lead_id}">${isContacted ? 'Contacted ✓' : 'Mark contacted'}</button></td>
