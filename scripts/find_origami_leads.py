@@ -1,4 +1,5 @@
 import csv
+import datetime
 import json
 import os
 import re
@@ -13,15 +14,12 @@ load_dotenv()
 ORIGAMI_BASE_URL = "https://origami.chat/api/v2"
 ORIGAMI_API_KEY = os.environ.get("ORIGAMI_API_KEY")
 
-# Single-region test run by default -- agent runs cost credits, so this
-# validates output quality/contact-field completeness before scaling to
-# all 50 states + DC. Accepts a free-text region description, not just a
-# 2-letter state code (e.g. "New York City and the tri-state area (NY, NJ, CT)").
+# ORIGAMI_USE_CASE controls which type of lead to search for.
+# Options: "nursing_home" (default) or "high_rise"
+USE_CASE = os.environ.get("ORIGAMI_USE_CASE", "nursing_home")
+
 TEST_REGION = os.environ.get("ORIGAMI_TEST_REGION", "New York City and the tri-state area (NY, NJ, CT)")
 
-# States the agent is actually asked to search -- used to flag rows it
-# returned anyway from outside that scope (e.g. it once returned a TX
-# facility for an NYC/tri-state run).
 EXPECTED_STATES = set(
     os.environ.get("ORIGAMI_EXPECTED_STATES", "NY,NJ,CT").split(",")
 )
@@ -31,7 +29,8 @@ TERMINAL_STATUSES = {
     "cancelled", "errored", "timed_out",
 }
 
-PROMPT_TEMPLATE = """Find skilled nursing facilities in {region} with online evidence
+PROMPTS = {
+    "nursing_home": """Find skilled nursing facilities in {region} with online evidence
 (Google/Yelp reviews, local news coverage, or public complaints) of urine odor,
 poor cleanliness, or incontinence/catheter care neglect. For each facility, return:
 - facility_name
@@ -42,7 +41,19 @@ poor cleanliness, or incontinence/catheter care neglect. For each facility, retu
 - a short quote or summary of the evidence you found, with its source URL
 
 Only include facilities where you found genuine evidence of an odor/cleanliness
-complaint, not just any negative review. Aim for up to 25 facilities."""
+complaint, not just any negative review. Aim for up to 25 facilities.""",
+
+    "high_rise": """Find luxury residential high-rise buildings in {region}. For each building, return:
+- building_name
+- address, city, state, zip_code
+- property manager contact name (the on-site or building manager, not corporate HQ)
+- contact email
+- contact phone
+- number of units (if findable)
+- any management company name
+
+Focus on high-end/luxury buildings (Class A, full-service, amenity-rich). Aim for up to 25 buildings.""",
+}
 
 
 def _headers():
@@ -64,13 +75,14 @@ def get_credit_balance():
     return resp.json()
 
 
-def start_agent_run(region):
+def start_agent_run(region, use_case):
+    prompt = PROMPTS.get(use_case, PROMPTS["nursing_home"]).format(region=region)
     resp = requests.post(
         f"{ORIGAMI_BASE_URL}/agents",
         headers=_headers(),
         json={
-            "name": f"Luften odor leads - {region}",
-            "prompt": PROMPT_TEMPLATE.format(region=region),
+            "name": f"Luften {use_case} leads - {region}",
+            "prompt": prompt,
             "model": "origami-lite",
         },
     )
@@ -119,17 +131,21 @@ def normalize_key(name, zip_code):
     return (name or "").strip().lower(), (zip_code or "").strip()[:5]
 
 
-def filter_and_flag(rows):
+def filter_and_flag(rows, use_case):
     kept = []
     dropped = 0
     out_of_region = 0
     for row in rows:
-        odor = row.get("odor-evidence", {})
-        if odor.get("is_genuine_complaint") is not True or not odor.get("evidence_quote"):
-            dropped += 1
-            continue
+        # Nursing home runs filter for genuine odor evidence; high-rise runs
+        # are contact-enrichment only so every returned row is valid.
+        if use_case == "nursing_home":
+            odor = row.get("odor-evidence", {})
+            if odor.get("is_genuine_complaint") is not True or not odor.get("evidence_quote"):
+                dropped += 1
+                continue
         state = (row.get("full-address", {}) or {}).get("state")
         row["out_of_region"] = bool(EXPECTED_STATES) and state not in EXPECTED_STATES
+        row["use_case"] = use_case
         if row["out_of_region"]:
             out_of_region += 1
         kept.append(row)
@@ -170,6 +186,21 @@ def cross_check_overlap(origami_rows, cms_leads_path):
     return origami_rows
 
 
+def append_run_manifest(manifest_path, region, use_case, row_count):
+    runs = []
+    if os.path.exists(manifest_path):
+        with open(manifest_path) as f:
+            runs = json.load(f)
+    runs.append({
+        "date": datetime.date.today().isoformat(),
+        "region": region,
+        "use_case": use_case,
+        "rows": row_count,
+    })
+    with open(manifest_path, "w") as f:
+        json.dump(runs, f, indent=2)
+
+
 def save_csv(rows, path):
     if not rows:
         return
@@ -183,12 +214,13 @@ def save_csv(rows, path):
 
 def main():
     region = TEST_REGION
+    use_case = USE_CASE
 
     balance_before = get_credit_balance()
     print(f"Credit balance before run: {balance_before}")
 
-    print(f"Starting Origami agent run for {region}...")
-    agent_id, run_id = start_agent_run(region)
+    print(f"Starting Origami agent run for {region} ({use_case})...")
+    agent_id, run_id = start_agent_run(region, use_case)
     run = poll_run(agent_id, run_id)
 
     balance_after = get_credit_balance()
@@ -207,7 +239,7 @@ def main():
     table_id = tables[0]["id"]
     print(f"Fetching rows from table {table_id}...")
     rows = fetch_table_rows(table_id)
-    rows = filter_and_flag(rows)
+    rows = filter_and_flag(rows, use_case)
 
     out_dir = os.path.join(os.path.dirname(__file__), "..", "output")
     cms_leads_path = os.path.join(out_dir, "leads.json")
@@ -231,6 +263,9 @@ def main():
         json.dump(merged, f, indent=2)
     print(f"Saved {len(merged)} Origami leads (accumulated) to {latest_json_path}")
     save_csv(merged, latest_csv_path)
+
+    manifest_path = os.path.join(out_dir, "origami_runs.json")
+    append_run_manifest(manifest_path, region, use_case, len(rows))
 
 
 if __name__ == "__main__":

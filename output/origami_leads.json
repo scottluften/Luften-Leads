@@ -46,7 +46,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "de787c88-e248-4543-942e-2f0f3cee5e83",
@@ -88,7 +89,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "566710d5-4bed-4c5e-a66e-527c41979e69",
@@ -137,7 +139,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "1c6cc5b6-2ec9-4319-a9c7-7e5977ebe79d",
@@ -179,7 +182,8 @@
       "email_source_url": "https://franklincare.com/contact/"
     },
     "in_both_sources": false,
-    "out_of_region": true
+    "out_of_region": true,
+    "use_case": "nursing_home"
   },
   {
     "id": "fc4221d3-e23a-4e91-a400-cf6601adf109",
@@ -228,7 +232,8 @@
       "email_source_url": "https://dryharbor.com/"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "0e66a038-504f-4403-b5f3-1c5deb92cb48",
@@ -277,7 +282,8 @@
       "email_source_url": "https://www.bapthealth.com/revised-visitation/"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "fb02eb17-fb8b-4a6c-a405-aa7afdcc3b1c",
@@ -326,7 +332,8 @@
       "email_source_url": "https://thegrandhealthcare.com/bridgeview/wp-content/uploads/sites/63/2025/08/GH-Bridge-View-Code-of-Conduct-April-2024.pdf"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "a29a2b87-1db5-410b-baf7-1b116363e5c2",
@@ -375,7 +382,8 @@
       "email_source_url": "https://cliffsiderehab.com/contact/"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "21b51109-39bc-4458-86d2-15fe9a0b159c",
@@ -424,7 +432,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "bea3aaba-2900-403a-a8e3-ad1b00cce3ac",
@@ -473,7 +482,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "c069dad4-03c7-4c6c-ba56-71a5ba584faf",
@@ -515,7 +525,8 @@
       "email_source_url": "https://www.uhgc.org/contact-us"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "3f79cd29-547c-489d-9bd6-c9b18576ac1d",
@@ -564,7 +575,8 @@
       "email_source_url": "https://www.communitylivingadvocates.com/new-york/jamesville/housingincny/iroquois-nursing-home"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "6353c17f-7dad-4420-8342-4420e17a2113",
@@ -613,7 +625,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "2ce2db60-99e6-4e1c-a4b0-979225beb595",
@@ -662,7 +675,8 @@
       "email_source_url": "https://pinesatpoughkeepsie.com/contact/"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "02079200-7759-4736-a943-e82b5d97f289",
@@ -711,7 +725,8 @@
       "email_source_url": "https://stjohnland.org/contact/"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "c110c70b-7bbe-47cd-aa59-8d958096277f",
@@ -760,7 +775,8 @@
       "email_source_url": "https://alamedacenter.com/contact-us/"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "e0f5db07-0efd-4720-b770-9634399eba1f",
@@ -809,7 +825,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "ffd4446c-ee2a-4a8c-a276-2f809291717c",
@@ -858,7 +875,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "9814fdab-f141-4db2-80f2-972d764c5daa",
@@ -907,7 +925,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "e95d6a68-81d9-4b1a-b911-c0143c4dd0cc",
@@ -956,7 +975,8 @@
       "email_source_url": null
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "54cf9ce6-157f-4531-ba0e-ce17e16eb124",
@@ -1005,7 +1025,8 @@
       "email_source_url": "https://ccgreenknoll.com/contact"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "d2b2d963-b268-4877-a193-2f752a7e3c75",
@@ -1054,7 +1075,8 @@
       "email_source_url": "https://livingstonpostacute.com/contact-us/"
     },
     "in_both_sources": false,
-    "out_of_region": false
+    "out_of_region": false,
+    "use_case": "nursing_home"
   },
   {
     "id": "7274caab-dc7e-4e89-a46c-edcf0758857b",
@@ -1094,6 +1116,7 @@
       "email_source_url": "https://www.acatcherryhill.com/"
     },
     "in_both_sources": false,
-    "out_of_region": true
+    "out_of_region": true,
+    "use_case": "nursing_home"
   }
 ]

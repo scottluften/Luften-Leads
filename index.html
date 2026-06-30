@@ -98,12 +98,11 @@
 <div class="wrap">
   <h1>Luften Leads</h1>
   <div class="sub">
-    Nursing home facilities with complaint-driven CMS citations under
-    <strong>F584</strong> (failure to provide a safe, clean, comfortable, homelike
-    environment) and/or <strong>F690</strong> (failure to provide appropriate
-    incontinence/catheter care) — the closest available proxies for an odor
-    complaint, since CMS doesn't publish inspector narrative text. Facilities
-    matching both codes are ranked highest, then by severity and recency.
+    Two lead sources: <strong>CMS (public data)</strong> — nursing home facilities
+    with complaint-driven F584/F690 citations, ranked by severity and correction
+    status; and <strong>Origami (AI-sourced)</strong> — nursing home odor complaints
+    and luxury high-rise property manager contacts found via reviews, news, and
+    public records, with admin name, email, and phone where available.
   </div>
   <div id="config-banner"></div>
 
@@ -113,6 +112,7 @@
   </div>
 
   <div class="tab-panel active" id="tab-public">
+    <div class="stat" id="cms-freshness" style="margin-bottom:10px;"></div>
     <div class="controls">
       <input id="search" type="text" placeholder="Search facility, city, or state...">
       <select id="state-filter"><option value="">All states</option></select>
@@ -171,16 +171,19 @@
 
   <div class="tab-panel" id="tab-origami">
     <div class="sub">
-      Facilities found by Origami's AI agent searching reviews, local news, and
-      complaints for odor/cleanliness language — not from CMS structured data.
-      Rows already filtered to "genuine complaint" evidence with a sourced quote;
-      <strong>Out of region</strong> means the agent returned it outside the area it
-      was asked to search, and <strong>Also in CMS list</strong> means the same
-      facility independently has a complaint-driven F584/F690 citation — the
-      strongest combined signal.
+      Leads sourced by Origami's AI agent — nursing home odor complaints (reviews,
+      news, public complaints) and luxury high-rise property manager contacts.
+      <strong>Also in CMS list</strong> means the same facility has a formal
+      complaint-driven F584/F690 citation — the strongest combined signal.
     </div>
+    <div class="stat" id="origami-coverage" style="margin-bottom:10px;"></div>
     <div class="controls">
-      <input id="origami-search" type="text" placeholder="Search facility, city, or state...">
+      <input id="origami-search" type="text" placeholder="Search facility or building, city, state...">
+      <select id="origami-type-filter">
+        <option value="">All types</option>
+        <option value="nursing_home">Nursing homes</option>
+        <option value="high_rise">High-rise buildings</option>
+      </select>
       <select id="origami-state-filter"><option value="">All states</option></select>
       <select id="origami-region-filter">
         <option value="">All results</option>
@@ -243,6 +246,14 @@ async function init() {
 
   const res = await fetch('output/leads.json');
   LEADS = await res.json();
+
+  try {
+    const metaRes = await fetch('output/cms_meta.json');
+    const meta = await metaRes.json();
+    document.getElementById('cms-freshness').textContent =
+      `CMS data last pulled: ${meta.data_as_of} — ${meta.total.toLocaleString()} facilities`;
+  } catch (e) {}
+
 
   if (API_URL) {
     try {
@@ -316,8 +327,18 @@ async function initOrigami() {
   document.getElementById('origami-state-filter').innerHTML +=
     states.map(s => `<option value="${s}">${s}</option>`).join('');
 
+  try {
+    const runsRes = await fetch('output/origami_runs.json');
+    const runs = await runsRes.json();
+    const parts = runs.map(r =>
+      `${r.region} (${r.use_case.replace('_', ' ')}, ${r.date}, ${r.rows} leads)`
+    );
+    document.getElementById('origami-coverage').textContent =
+      `Regions queried: ${parts.join(' · ')}`;
+  } catch (e) {}
+
   document.getElementById('origami-search').addEventListener('input', debounce(renderOrigami, 200));
-  ['origami-state-filter', 'origami-region-filter', 'origami-overlap-filter'].forEach(id =>
+  ['origami-type-filter', 'origami-state-filter', 'origami-region-filter', 'origami-overlap-filter'].forEach(id =>
     document.getElementById(id).addEventListener('input', renderOrigami)
   );
 
@@ -326,13 +347,16 @@ async function initOrigami() {
 
 function renderOrigami() {
   const term = document.getElementById('origami-search').value.toLowerCase();
+  const typeF = document.getElementById('origami-type-filter').value;
   const stateF = document.getElementById('origami-state-filter').value;
   const regionF = document.getElementById('origami-region-filter').value;
   const overlapF = document.getElementById('origami-overlap-filter').value;
 
   let rows = ORIGAMI_LEADS.filter(r => {
     const addr = r['full-address'] || {};
-    if (term && !`${r.title} ${addr.city} ${addr.state}`.toLowerCase().includes(term)) return false;
+    const name = r.title || r.building_name || '';
+    if (term && !`${name} ${addr.city} ${addr.state}`.toLowerCase().includes(term)) return false;
+    if (typeF && r.use_case !== typeF) return false;
     if (stateF && addr.state !== stateF) return false;
     if (regionF === 'hide' && r.out_of_region) return false;
     if (overlapF === 'only' && !r._in_cms_list) return false;
@@ -354,10 +378,10 @@ function renderOrigami() {
       <tr>
         <td><div class="facility">${r.title || '—'}</div>${addr.street_address ? `<a class="maps-link meta" href="https://maps.google.com/?q=${mapsQuery}" target="_blank" rel="noopener">${addr.street_address}</a>` : ''}</td>
         <td>${addr.city || '—'}, ${addr.state || '—'} ${addr.zip_code || ''}</td>
-        <td>${phoneDigits ? `<a class="phone-link" href="tel:${phoneDigits}">${phone}</a>` : '—'}</td>
-        <td>${admin || '—'}</td>
+        <td style="white-space:nowrap">${phoneDigits ? `<a class="phone-link" href="tel:${phoneDigits}">${phone}</a>` : '—'}</td>
+        <td style="white-space:nowrap">${admin || '—'}</td>
         <td>${email ? `<a class="phone-link" href="mailto:${email}">${email}</a>` : '—'}</td>
-        <td class="quote">${odor.evidence_quote ? `"${odor.evidence_quote}"${odor.evidence_source_url ? ` <a class="meta" href="${odor.evidence_source_url}" target="_blank" rel="noopener">[source]</a>` : ''}` : '—'}</td>
+        <td class="quote" style="max-width:340px">${odor.evidence_quote ? `"${odor.evidence_quote}"${odor.evidence_source_url ? ` <a class="meta" href="${odor.evidence_source_url}" target="_blank" rel="noopener">[source]</a>` : ''}` : '—'}</td>
         <td>${r.out_of_region ? '<span class="tag-badge region-warn">Out of region</span>' : ''}${r._in_cms_list ? '<span class="tag-badge overlap">Also in CMS list</span>' : ''}</td>
       </tr>`;
   }).join('');

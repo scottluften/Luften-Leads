@@ -216,6 +216,11 @@ def main():
     out_dir = os.path.join(os.path.dirname(__file__), "..", "output")
     save_csv(leads, os.path.join(out_dir, "leads.csv"))
     save_json(leads, os.path.join(out_dir, "leads.json"))
+    import datetime
+    meta = {"data_as_of": datetime.date.today().isoformat(), "total": len(leads)}
+    with open(os.path.join(out_dir, "cms_meta.json"), "w") as f:
+        json.dump(meta, f)
+    print(f"Wrote cms_meta.json ({meta})")
 
 
 if __name__ == "__main__":
